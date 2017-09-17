@@ -43,13 +43,18 @@
          变量名 模块变量名与函数名一样，都是小写，字间可以增加下划线以提高可读性。不加也无所谓。本项目中不加。
          类名   CapWord，单词首字母大写
     （2） 项目托管在github上，有一个程序员，两处开发地点。因此，需要有一个远程代码库。
-         在本地盘上新建一个目录如：\codingproject，进入此目录：
+         远程代码库的创建和删除都需要手工登录到https://github.com上面操作。
+         在本地盘上新建一个目录，这个目录可以存放所有需要远程同步的项目，如：\codingproject，进入此目录：
          $git init
          $git clone https://github.com/727647912/tcpscan.git (拉代码，并更新working tree
          $cd tcpscan  (进入本地目录）
          拷贝其中的最新文件，到pycharm project中，开发。。。。
          一天结束时，拷贝pycharm project中的文件（tcpscan.py等）到上述目录中，并在上述目录中：
-         $git 
+         $git add tcpscan.py
+         $git commit -m "2nd version"
+         $git push -u origin master  (远程更新）
+
+
 1.5 测试
     单元测试，unittest
 
