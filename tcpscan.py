@@ -68,7 +68,7 @@
 
 import sys
 import re
-importt socket
+import socket
 import struct
 
 
@@ -118,7 +118,6 @@ class CheckArgv():
             return False, "host domain name or ip must be provided!"
 
         #检查第二元素，应该是主机的描述。且是用逗号隔开的，连续数字或字母。
-        #  ^(?:(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])$
 
         ip_p = re.compile('^((25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(25[0-5]|2[0-4]\d|[01]?\d\d?)$')
 
@@ -136,18 +135,66 @@ class CheckArgv():
                 TargetHosts.hostip_list.append(item)
                 print("TargetHosts {}".format(TargetHosts.hostip_list))
             elif re.search('-',item): # is range expr?
-                startip=item.split('-')[0]
-                endip=item.split('-')[1]
-                if ip_p.match(startip) and ip_p.match(endip):
-                    for item1 in range(socket.ntohl(struct.unpack("I",socket)))
-                    TargetHosts.hostip_list.append(startip)
-                    TargetHosts.hostip_list.append(endip)
+                startip = item.split('-')[0]
+                endip = item.split('-')[1]
+                if ip_p.match( startip ) and ip_p.match( endip ):
+
+                    startip_int = socket.ntohl(struct.unpack("I",socket.inet_aton(str(startip)))[0])
+                    endip_int = socket.ntohl(struct.unpack("I",socket.inet_aton(str(endip)))[0])
+                    if endip_int < startip_int:
+                       startip_int,endip_int = endip_int, startip_int #exchange
+                    for item1 in range( startip_int, endip_int + 1 ):
+                        ip_str = socket.inet_ntoa(struct.pack('I',socket.htonl(item1)))
+                        TargetHosts.hostip_list.append(ip_str)
+                else:       # not valid range
+                    return False, "Invalid host range! [{}]".format(item)
                 print("TargetHosts {}".format(TargetHosts.hostip_list))
             else:
                 return False, "Invalid hostname or host ip! [{}]".format(item)
+        if len( CheckArgv.lowercase_argv ) == 2: #no -p
+            for i in range(DEFAULT_PORT_LOWERLIMIT,DEFAULT_PORT_UPPERLIMIT+1):
+                TargetHosts.port_list.append(i)
+            return True, "Arguments check completed."
+        if len( CheckArgv.lowercase_argv ) == 3:
+            if CheckArgv.lowercase_argv[2] == "-p":
+                return False, "Port number or port range cannot be null!"
+            else:
+                return False, "Unknow switch! [{}]".format(CheckArgv.lowercase_argv[2])
+        if len (CheckArgv.lowercase_argv ) == 4:  #ports
+            portlist=[]
+            portlist=CheckArgv.lowercase_argv[3].split(',')[:]
+            print(portlist)
+            int_p=re.compile('^[0-9]+$')
+            for item in portlist:
+                if int_p.match(item):
+                    port_int=int(item)
+                    if port_int <=65535 and port_int >=0:
+                        TargetHosts.port_list.append(port_int)
+                    else:
+                        return False, "Port number should be no more than 65535, and not negative! [{}]".format(item)
+                elif re.search('-',item):  # port range expr?
+                    startport=item.split('-')[0]
+                    endport=item.split('-')[1]
+                    if int_p.match(startport) and int_p.match(endport):
+                        startport_int = int (startport)
+                        endport_int = int (endport)
+                        if startport_int > 65535 or startport_int < 0 or endport_int > 65535 or endport_int < 0:
+                            return False, "Port number should be no more than 65535, and not negative ! [{}]".format(item)
+                        if startport_int >endport_int:
+                            startport_int, endport_int = endport_int, startport_int
+                        for i in range(startport_int, endport_int+1):
+                            TargetHosts.port_list.append(i)
+
+                    else:
+                        return False,"Invalid port range ![{}]".format(item)
+
+                else:  #not a valid port or port range
+                    return False, "Invalid port or port range ![{}]".format(item)
 
 
-        return True, "Argument Check OK"
+
+
+        return True, "Argument check completed."
 
 def main(argv):
     #测试命令行参数的有效性
@@ -157,7 +204,8 @@ def main(argv):
         usage()
         sys.exit(1)
 
-    print (CheckArgv.lowercase_argv)
+    print (TargetHosts.hostip_list)
+    print(TargetHosts.port_list)
 
 
 #----------------------------------  main ----------------------
