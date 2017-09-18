@@ -67,23 +67,97 @@
 """
 
 import sys
-import os
+import re
+importt socket
+import struct
+
+
+DEFAULT_PORT_LOWERLIMIT = 0
+DEFAULT_PORT_UPPERLIMIT = 1023  #如果没有给出 -p 则默认为 0-1023
+
 
 def usage():
-    print ("\nUsage: python3 tcpscan -h [hosts | hostdomainname ]  [ -p port_number | port_range ]")
+    print ("\nUsage: \npython3 tcpscan.py -[h|H] [hosts | hostdomainname ]  [ -[p|P] port_number | port_range ]")
     print("hosts: could be a single ip or a list of ips or an ip range, for example: 192.168.0.1,192.168.0.10-192.168.0.20")
-    print("hostdomainname: valid FQDN, for example: www.baidu.com")
+    print("hostdomainname: a valid FQDN, for example: www.baidu.com, case insensitive;")
+    print("-p (optional), defaults to 0-1023 if not provided")
+    print("port_number: valid from 0 to 65535")
+    print("port_range syntax example: 0-20,21,22,8080")
+    print("example: $python3 tcpscan.py -h www.sina.com,192.168.0.1,200.200.20.1-200.200.21.0 -p 21,8080")
     print("\n\n")
 
+class TargetHosts():
+    hostip_list =[]  #单个ip形式的目标主机列表
+    host_domain_name={} #如果以域名给出的主机，则把其名字和对应的解析出的ip放进此字典
+    port_list=[]
 
+class CheckArgv():
+    lowercase_argv = []
+    def __init__(self, argv):
+                                          #转换并存贮所有参数为本类小写list
+        for item in argv:
+            CheckArgv.lowercase_argv.append(item.lower())
+
+    def check_domainname(self,domainname):
+        pass
+
+    def check_ip(self,ip):
+        pass
+
+    def check(self):
+        # 测试 argv第一元素一定是'-h', 否则给出使用提示
+
+        if len(CheckArgv.lowercase_argv) <= 0:
+            return False, "Invalid number of arguments!"
+
+        if CheckArgv.lowercase_argv[0] != "-h":
+            return False, "Argument must begin with -h or -H "
+
+
+        if len( CheckArgv.lowercase_argv ) < 2:
+            return False, "host domain name or ip must be provided!"
+
+        #检查第二元素，应该是主机的描述。且是用逗号隔开的，连续数字或字母。
+        #  ^(?:(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])$
+
+        ip_p = re.compile('^((25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(25[0-5]|2[0-4]\d|[01]?\d\d?)$')
+
+        domainname_p = re.compile( '^([a-z0-9]+(-[a-z0-9]+)*\.)+[a-z]{2,}$' )
+
+        # if p.match(ip):
+        #    return True
+        hostlist = []
+        hostlist = CheckArgv.lowercase_argv[1].split(',')[:]
+        for item in hostlist:
+            if ip_p.match(item):  # found an ip
+                TargetHosts.hostip_list.append(item)
+                print("TargetHosts {}".format(TargetHosts.hostip_list))
+            elif domainname_p.match(item):  # found a domainname
+                TargetHosts.hostip_list.append(item)
+                print("TargetHosts {}".format(TargetHosts.hostip_list))
+            elif re.search('-',item): # is range expr?
+                startip=item.split('-')[0]
+                endip=item.split('-')[1]
+                if ip_p.match(startip) and ip_p.match(endip):
+                    for item1 in range(socket.ntohl(struct.unpack("I",socket)))
+                    TargetHosts.hostip_list.append(startip)
+                    TargetHosts.hostip_list.append(endip)
+                print("TargetHosts {}".format(TargetHosts.hostip_list))
+            else:
+                return False, "Invalid hostname or host ip! [{}]".format(item)
+
+
+        return True, "Argument Check OK"
 
 def main(argv):
-#测试 argv第一元素一定是'-h', 否则给出使用提示
-    if len(argv) <= 0 or argv[0] != "-h":
+    #测试命令行参数的有效性
+    result, errormsg = CheckArgv(argv).check()
+    if not result:
+        print("Syntax Error: " + errormsg)
         usage()
         sys.exit(1)
 
-    print (argv)
+    print (CheckArgv.lowercase_argv)
 
 
 #----------------------------------  main ----------------------
