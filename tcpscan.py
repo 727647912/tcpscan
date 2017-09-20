@@ -101,14 +101,14 @@ class TargetHosts():
     def remove_duplicate_and_sort(cls, filtertype="hostip"):
         if filtertype == "hostip":
             TargetHosts.hostip_list = list(set(TargetHosts.hostip_list))
-            print("Host ip after setting:{}".format(TargetHosts.hostip_list))
+            #print("Host ip after setting:{}".format(TargetHosts.hostip_list))
             TargetHosts.hostip_list.sort(key = TargetHosts.ip_int_cmp)  # 给个key函数，每个元素都会调用。
-            print("Host ip after remove_duplicate_and_sort:{}".format(TargetHosts.hostip_list))
+            #print("Host ip after remove_duplicate_and_sort:{}".format(TargetHosts.hostip_list))
             return True
         elif filtertype == "port":
             TargetHosts.port_list = list(set(TargetHosts.port_list))
             TargetHosts.port_list.sort()
-            print("Port list after remove_duplicate_and_sort:{}".format(TargetHosts.port_list))
+            #print("Port list after remove_duplicate_and_sort:{}".format(TargetHosts.port_list))
             return True
         elif filtertype == "hostdomain":
             TargetHosts.hostdomain_list = list(set(TargetHosts.hostdomain_list))
@@ -151,10 +151,10 @@ class CheckArgv():
         for item in hostlist:
             if ip_p.match(item):  # found an ip
                 TargetHosts.hostip_list.append(item)
-                print("TargetHosts {}".format(TargetHosts.hostip_list))
+                #print("TargetHosts {}".format(TargetHosts.hostip_list))
             elif domainname_p.match(item):  # found a domainname
                 TargetHosts.hostdomain_list.append(item)
-                print("TargetHostsDomain {}".format(TargetHosts.hostdomain_list))
+                #print("TargetHostsDomain {}".format(TargetHosts.hostdomain_list))
             elif re.search('-', item):  # is range expr?
                 startip = item.split('-')[0]
                 endip = item.split('-')[1]
@@ -169,7 +169,7 @@ class CheckArgv():
                         TargetHosts.hostip_list.append(ip_str)
                 else:  # not valid range
                     return False, "Invalid host range! [{}]".format(item)
-                print("TargetHosts {}".format(TargetHosts.hostip_list))
+                #print("TargetHosts {}".format(TargetHosts.hostip_list))
             else:
                 return False, "Invalid hostname or host ip! [{}]".format(item)
         if len(CheckArgv.lowercase_argv) == 2:  # no -p
@@ -217,7 +217,7 @@ and not negative ! [{}]".format(item)
 
 def tcp_full_scanner(target_host, target_port):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)   #   最传统的TCP socket
-    s.settimeout(0.05)
+    s.settimeout(1)
     result = None
     try:
         s.connect((target_host,target_port))  # timeout type socket, return if everything ok, or raise socket.timeout
@@ -270,7 +270,7 @@ def main(argv):
     for i in range(0, len(TargetHosts.hostip_list) ):
         for j in range(0, len(TargetHosts.port_list)):
             if tcp_full_scanner(TargetHosts.hostip_list[i],TargetHosts.port_list[j]):
-                print("    [+]{0:20s}  port:{1:6d}     \
+                print("    [+]{0:20s} ==>     port:{1:6d}     \
 Open!".format(TargetHosts.hostip_list[i],TargetHosts.port_list[j]) )
 
     print("")
