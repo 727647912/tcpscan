@@ -77,11 +77,12 @@ import struct
 import datetime
 import queue
 import threading
+import time
 
 DEFAULT_PORT_LOWERLIMIT = 0
 DEFAULT_PORT_UPPERLIMIT = 1023  # 如果没有给出 -p 则默认为 0-1023
-CONNECTION_TIMEOUT = 2  #  tcp 的连接超时是2秒，这是最坏情况，对端主机在2秒内没有响应或RST,则返回，认为是端口不存在。
-MAX_WORKER_THREAD_NUMBER = 10 # 最大的工作线程数
+CONNECTION_TIMEOUT = 5  #  tcp 的连接超时是2秒，这是最坏情况，对端主机在2秒内没有响应或RST,则返回，认为是端口不存在。
+MAX_WORKER_THREAD_NUMBER = 2000 # 最大的工作线程数
 
 def usage():
     print("\nUsage: \npython3 tcpscan.py -[h|H] [hosts | hostdomainname ]  [ -[p|P] port_number | port_range ]")
@@ -97,7 +98,8 @@ for example: 192.168.0.1,192.168.0.10-192.168.0.20")
 
 class TargetHosts():
     hostip_list = []  # 单个ip形式的目标主机列表
-    hostdomain_list = []  # 如果以域名给出的主机，则把其名字和对应的解析出的ip放进此字典
+    hostdomain_list = []  # 如果以域名给出的主机，则把其名字放进此表
+    hostdomain_dict = {}  # 如果以域名给出的主机，则把其名字和对应的解析出的ip放进此字典
     port_list = []
 
     @classmethod
@@ -116,6 +118,9 @@ class TargetHosts():
         elif filtertype == "hostdomain":
             TargetHosts.hostdomain_list = list(set(TargetHosts.hostdomain_list))
             TargetHosts.hostdomain_list.sort()
+            for item in range(0,len(TargetHosts.hostip_list)):
+                result,ip_str=TargetHosts.domain_name_to_ipstr(TargetHosts.hostip_list[item])
+                TargetHosts.hostdomain_dict[item]=ip_str  #add or change a key/value
             return True
         else:
             return False
@@ -124,6 +129,16 @@ class TargetHosts():
     def ip_int_cmp(cls,ip1):  #  两个ip的字符串表示，12.34.56.78
         return socket.ntohl(struct.unpack("I",socket.inet_aton(ip1))[0])
 
+    @classmethod
+    def domain_name_to_ipstr(cls,domain_name):  # resolve domain name to ip, return "Unknown" on Error
+        result=True
+        try:
+            ip_str=socket.gethostbyname(domain_name)
+        except:
+            result=False
+            ip_str="Unknown"
+        finally:
+            return result,ip_str
 
 class CheckArgv():
     lowercase_argv = []
@@ -222,6 +237,8 @@ def tcp_full_scanner(target_host, target_port):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)   #   最传统的TCP socket
     s.settimeout(CONNECTION_TIMEOUT)
     result = None
+    #time.sleep(2)
+    #print("try target_port:{}".format(target_port))
     try:
         s.connect((target_host,target_port))  # timeout type socket, return if everything ok, or raise socket.timeout
                                               # on timeout. or interrupted by a signal
@@ -275,15 +292,14 @@ def main(argv):
     working_thread=[]
 
 
-    # tcp full scan
-    # (1) host ip
+# tcp full scan
+# (1) host ip
     for i in range(0, len(TargetHosts.hostip_list) ):
         for j in range(0, len(TargetHosts.port_list)):
             if len(working_thread) < MAX_WORKER_THREAD_NUMBER:
                 t=threading.Thread(target=tcp_full_scanner, args=(TargetHosts.hostip_list[i],TargetHosts.port_list[j]))
                 working_thread.append(t)
                 t.start()
-                print("I={},J={}".format(i,j))
             else:
                 while True:
                     found=False
@@ -295,25 +311,26 @@ def main(argv):
                             working_thread.append(t)
                             t.start()
                             found=True
-                           # print("[working thread length{} {},{}]not alive [{}]".format(len(working_thread),i,j,k))
-
+                            break
                     if found:
                         break;
+# wait until all worker finished
+    for t in working_thread:
+        t.join()
 
+#clean working thread
+    for t in working_thread:
+        del working_thread[k]
 
+    print("length of working thread {}",len(working_thread))
 
-
-
-
-  #          if tcp_full_scanner(TargetHosts.hostip_list[i],TargetHosts.port_list[j]):
-  #              print("    [+]{0:20s} ==>     port:{1:6d}     \
-  # Open!".format(TargetHosts.hostip_list[i],TargetHosts.port_list[j]) )
 
     print("")
     et = datetime.datetime.today()
+    delt_time= et-dt
     print("Scan Completed. [{:4d}-{:02d}-{:02d} {:02d}:{:02d}:{:02d}]\
 ".format(et.year, et.month, et.day, et.hour, et.minute, et.second))
-
+    print("Elapsed time:[{:6d} seconds]".format(delt_time.seconds))
 # ----------------------------------  main ----------------------
 
 if __name__ == "__main__":
