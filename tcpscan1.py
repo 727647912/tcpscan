@@ -1,4 +1,4 @@
-# tcpscan.py
+# tcpscan1.py
 # -*- coding: utf-8 -*-
 """
 1.需求
@@ -75,11 +75,13 @@ import re
 import socket
 import struct
 import datetime
+import queue
+import threading
 
 DEFAULT_PORT_LOWERLIMIT = 0
 DEFAULT_PORT_UPPERLIMIT = 1023  # 如果没有给出 -p 则默认为 0-1023
 CONNECTION_TIMEOUT = 2  #  tcp 的连接超时是2秒，这是最坏情况，对端主机在2秒内没有响应或RST,则返回，认为是端口不存在。
-MAX_WORKER_THREAD_NUMBER = 100 # 最大的工作线程数
+MAX_WORKER_THREAD_NUMBER = 10 # 最大的工作线程数
 
 def usage():
     print("\nUsage: \npython3 tcpscan.py -[h|H] [hosts | hostdomainname ]  [ -[p|P] port_number | port_range ]")
@@ -218,7 +220,7 @@ and not negative ! [{}]".format(item)
 
 def tcp_full_scanner(target_host, target_port):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)   #   最传统的TCP socket
-    s.settimeout(2)
+    s.settimeout(CONNECTION_TIMEOUT)
     result = None
     try:
         s.connect((target_host,target_port))  # timeout type socket, return if everything ok, or raise socket.timeout
@@ -229,6 +231,8 @@ def tcp_full_scanner(target_host, target_port):
     finally:
         s.close()
         del s
+        if result:
+            print("HOST{},port{},Alive".format(target_host,target_port))
         return result
 
 
@@ -266,13 +270,44 @@ def main(argv):
 
     print("")
 
+
+    # threaded workers
+    working_thread=[]
+
+
     # tcp full scan
     # (1) host ip
     for i in range(0, len(TargetHosts.hostip_list) ):
         for j in range(0, len(TargetHosts.port_list)):
-            if tcp_full_scanner(TargetHosts.hostip_list[i],TargetHosts.port_list[j]):
-                print("    [+]{0:20s} ==>     port:{1:6d}     \
-Open!".format(TargetHosts.hostip_list[i],TargetHosts.port_list[j]) )
+            if len(working_thread) < MAX_WORKER_THREAD_NUMBER:
+                t=threading.Thread(target=tcp_full_scanner, args=(TargetHosts.hostip_list[i],TargetHosts.port_list[j]))
+                working_thread.append(t)
+                t.start()
+                print("I={},J={}".format(i,j))
+            else:
+                while True:
+                    found=False
+                    for k in range(0,MAX_WORKER_THREAD_NUMBER):
+                        if not working_thread[k].isAlive():
+                            del working_thread[k]
+                            t = threading.Thread(target=tcp_full_scanner,
+                                             args=(TargetHosts.hostip_list[i], TargetHosts.port_list[j]))
+                            working_thread.append(t)
+                            t.start()
+                            found=True
+                           # print("[working thread length{} {},{}]not alive [{}]".format(len(working_thread),i,j,k))
+
+                    if found:
+                        break;
+
+
+
+
+
+
+  #          if tcp_full_scanner(TargetHosts.hostip_list[i],TargetHosts.port_list[j]):
+  #              print("    [+]{0:20s} ==>     port:{1:6d}     \
+  # Open!".format(TargetHosts.hostip_list[i],TargetHosts.port_list[j]) )
 
     print("")
     et = datetime.datetime.today()
