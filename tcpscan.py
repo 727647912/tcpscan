@@ -13,8 +13,8 @@
 
     （2）要求至少有交互式命令行来实现；
 
-         $python3 tcpscan -h www.htsc.com.cn -p 1-65535
-         $python3 tcpscan -h www.htsc.com.cn -p 80,8080,21
+         $python3 tcpscan -h www.cisco.com -p 1-65535
+         $python3 tcpscan -h www.cisco.com -p 80,8080,21
          $python3 tcpscan -h 192.168.0.8-192.168.0.255,www.sina.com -p 21,80,8080,22,4899,135,445
          $python3 tcpscan -h 192.168.0.8,192.168.0.20 -p 21,80
          $python3 tcpscan -h 192.168.0.8,www.sina.com    # 端口不给出时，执行0-1023 扫描
